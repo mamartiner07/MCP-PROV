@@ -5,10 +5,11 @@ import sys
 from typing import Any, Dict, Optional
 
 import uvicorn
+from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-from config import MCP_HOST, MCP_PATH, MCP_PORT, MCP_TRANSPORT
+from config import MCP_API_KEY, MCP_HOST, MCP_PATH, MCP_PORT, MCP_TRANSPORT
 from client_api import (
     reset_user_ad_request,
     send_totp_request,
@@ -126,6 +127,71 @@ async def reset_user_ad_sa(
     return json.dumps(result, ensure_ascii=False, indent=2)
 
 
+class APIKeyAuthMiddleware(BaseHTTPMiddleware):
+    """
+    Middleware de autenticación por API Key para solicitudes HTTP entrantes (Copilot Studio).
+    Valida el header 'X-API-Key' o 'Authorization: Bearer <key>'.
+    Permite acceso libre a endpoints públicos como /health, / y solicitudes OPTIONS (CORS preflight).
+    """
+
+    def __init__(self, app, api_key: Optional[str] = None):
+        super().__init__(app)
+        self.api_key = (api_key if api_key is not None else MCP_API_KEY).strip()
+
+    async def dispatch(self, request: Request, call_next):
+        # Permitir preflight CORS y rutas públicas de verificación
+        if request.method == "OPTIONS" or request.url.path in ("/health", "/"):
+            return await call_next(request)
+
+        # Si hay una API Key configurada, validarla
+        if self.api_key:
+            header_key = request.headers.get("x-api-key")
+            auth_header = request.headers.get("authorization")
+
+            is_valid = False
+            if header_key and header_key.strip() == self.api_key:
+                is_valid = True
+            elif auth_header:
+                token = auth_header.strip()
+                if token.lower().startswith("bearer "):
+                    token = token[7:].strip()
+                if token == self.api_key:
+                    is_valid = True
+
+            if not is_valid:
+                client_ip = request.client.host if request.client else "desconocido"
+                logger.warning(
+                    f"Petición no autorizada rechazada en {request.url.path} desde {client_ip}"
+                )
+                return JSONResponse(
+                    {
+                        "error": "Unauthorized",
+                        "message": "API Key inválida o ausente. Configure el header 'X-API-Key' o 'Authorization: Bearer <token>' en Copilot Studio.",
+                    },
+                    status_code=401,
+                )
+
+        return await call_next(request)
+
+
+def create_streamable_http_app(
+    path: str = MCP_PATH,
+    host: str = MCP_HOST,
+    api_key: Optional[str] = None,
+):
+    """Crea y configura la aplicación Starlette para Streamable HTTP con seguridad y autenticación."""
+    security_settings = TransportSecuritySettings(
+        enable_dns_rebinding_protection=False
+    )
+    app = mcp_server.streamable_http_app(
+        streamable_http_path=path,
+        transport_security=security_settings,
+        host=host,
+    )
+    app.add_middleware(APIKeyAuthMiddleware, api_key=api_key)
+    return app
+
+
 def main():
     # Desempaquetar argumentos si vinieron agrupados en una sola cadena (típico en interfaces web como MCP Inspector)
     if len(sys.argv) > 1 and any(" " in arg for arg in sys.argv[1:]):
@@ -171,17 +237,12 @@ def main():
         mcp_server.run(transport="sse", host=args.host, port=args.port)
     else:
         # streamable-http (Requerido para Microsoft Copilot Studio)
-        # Desactivamos la protección estricta de DNS rebinding para permitir peticiones
-        # desde proxies inversos, dominios públicos o túneles ngrok/Azure
-        security_settings = TransportSecuritySettings(
-            enable_dns_rebinding_protection=False
-        )
+        app = create_streamable_http_app(path=args.path, host=args.host)
 
-        app = mcp_server.streamable_http_app(
-            streamable_http_path=args.path,
-            transport_security=security_settings,
-            host=args.host,
-        )
+        if MCP_API_KEY:
+            logger.info("Autenticación por API Key activada (Header requerido: X-API-Key o Authorization)")
+        else:
+            logger.warning("ADVERTENCIA: MCP_API_KEY no configurada. El servidor responderá sin autenticación.")
 
         logger.info(f"Servidor listo para Copilot Studio en http://{args.host}:{args.port}{args.path}")
         logger.info(f"Healthcheck disponible en http://{args.host}:{args.port}/health")

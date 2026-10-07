@@ -26,3 +26,6 @@ MCP_HOST = os.getenv("MCP_HOST", "0.0.0.0")
 MCP_PORT = int(os.getenv("PORT", os.getenv("MCP_PORT", "8000")))
 MCP_PATH = os.getenv("MCP_PATH", "/mcp")
 MCP_TRANSPORT = os.getenv("MCP_TRANSPORT", "streamable-http")
+
+# Clave de autenticación para clientes MCP entrantes (Copilot Studio)
+MCP_API_KEY = os.getenv("MCP_API_KEY", "")
