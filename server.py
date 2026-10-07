@@ -66,7 +66,7 @@ async def send_totp_provident(
     Envía un código OTP/TOTP a un empleado de Provident.
 
     Args:
-        numero_empleado: Número de identificación del empleado (ej. "10005").
+        numero_empleado: Número de identificación del empleado.
         token: (Opcional) Token Bearer JWT personalizado para autenticación.
     """
     result = await send_totp_request(numero_empleado=numero_empleado, token=token)
@@ -86,8 +86,8 @@ async def validate_totp_provident(
     Valida el código OTP de un empleado de Provident.
 
     Args:
-        numero_empleado: Número del empleado (ej. "10005").
-        otp: Código TOTP de 6 dígitos que recibió el empleado (ej. "493927").
+        numero_empleado: Número de identificación del empleado.
+        otp: Código TOTP de 6 dígitos recibido por el empleado.
         token: (Opcional) Token Bearer JWT personalizado para autenticación.
     """
     result = await validate_totp_request(
@@ -98,11 +98,11 @@ async def validate_totp_provident(
 
 @mcp_server.tool(
     name="reset_user_ad_sa",
-    description="Restablece la contraseña de una cuenta en Active Directory (AD) de Provident. Recibe la nueva contraseña en texto plano y la codifica automáticamente en Base64.",
+    description="Restablece la contraseña de una cuenta en Active Directory (AD) de Provident. El servidor genera automáticamente una contraseña temporal segura de al menos 12 caracteres (con mayúsculas, minúsculas, números y un signo) y la retorna en 'temporary_password' para que el asistente se la entregue al usuario.",
 )
 async def reset_user_ad_sa(
     sam_account_name: str,
-    new_password: str,
+    new_password: Optional[str] = None,
     ad_user: Optional[str] = None,
     ad_server: Optional[str] = None,
     token: Optional[str] = None,
@@ -111,8 +111,8 @@ async def reset_user_ad_sa(
     Restablece la contraseña de un usuario en Active Directory.
 
     Args:
-        sam_account_name: Nombre de usuario / cuenta SamAccountName (ej. "ramiroha").
-        new_password: Nueva contraseña en texto plano (el servidor la codificará a Base64).
+        sam_account_name: Nombre de usuario o cuenta SamAccountName.
+        new_password: (Opcional) Contraseña en texto plano. Si se omite, el servidor genera una automáticamente.
         ad_user: (Opcional) Usuario administrador del AD (por defecto configurado en .env).
         ad_server: (Opcional) Servidor AD destino (por defecto configurado en .env).
         token: (Opcional) Token Bearer JWT personalizado para autenticación.

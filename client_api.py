@@ -1,5 +1,7 @@
 import base64
 import logging
+import secrets
+import string
 from typing import Any, Dict, Optional
 import httpx
 
@@ -15,6 +17,35 @@ from config import (
 )
 
 logger = logging.getLogger("mcp-provident")
+
+
+def generate_secure_password(length: int = 12) -> str:
+    """
+    Genera una contraseña aleatoria de al menos 12 caracteres.
+    Incluye obligatoriamente mayúsculas, minúsculas, números y al menos un signo/carácter especial.
+    """
+    if length < 12:
+        length = 12
+
+    uppercase = string.ascii_uppercase
+    lowercase = string.ascii_lowercase
+    digits = string.digits
+    symbols = "!@#$%&*-_=+"
+
+    # Garantizar al menos un carácter de cada conjunto requerido
+    chosen = [
+        secrets.choice(uppercase),
+        secrets.choice(lowercase),
+        secrets.choice(digits),
+        secrets.choice(symbols),
+    ]
+
+    all_characters = uppercase + lowercase + digits + symbols
+    chosen += [secrets.choice(all_characters) for _ in range(length - 4)]
+
+    # Mezclar aleatoriamente las posiciones
+    secrets.SystemRandom().shuffle(chosen)
+    return "".join(chosen)
 
 
 def encode_base64(text: str) -> str:
@@ -102,7 +133,7 @@ async def validate_totp_request(
 
 async def reset_user_ad_request(
     sam_account_name: str,
-    new_password: str,
+    new_password: Optional[str] = None,
     ad_user: Optional[str] = None,
     ad_psw: Optional[str] = None,
     ad_server: Optional[str] = None,
@@ -111,12 +142,20 @@ async def reset_user_ad_request(
     """
     Restablece la contraseña de un usuario en Active Directory.
     Endpoint: PUT /Active Directory/SA/resetUserADSA (puerto 6443)
-    La contraseña 'new_password' se codifica automáticamente en Base64.
+    Si 'new_password' no se proporciona o está vacío, el servidor genera automáticamente
+    una contraseña temporal segura de al menos 12 caracteres (con mayúsculas, minúsculas, números y un signo).
+    La contraseña se codifica automáticamente en Base64 para el envío.
     """
     url = f"{AD_API_URL}/Active Directory/SA/resetUserADSA"
     headers = _get_headers(token)
 
-    encoded_password = encode_base64(new_password)
+    # Si no se pasó contraseña, generarla automáticamente en el servidor
+    if new_password and new_password.strip():
+        password_to_set = new_password.strip()
+    else:
+        password_to_set = generate_secure_password(12)
+
+    encoded_password = encode_base64(password_to_set)
 
     payload = {
         "ADUser": (ad_user or AD_DEFAULT_USER).strip(),
@@ -134,11 +173,15 @@ async def reset_user_ad_request(
             except Exception:
                 data = {"raw_response": response.text}
 
-            return {
+            result: Dict[str, Any] = {
                 "http_status": response.status_code,
                 "success": response.is_success,
                 "data": data,
             }
+            if response.is_success:
+                result["temporary_password"] = password_to_set
+
+            return result
     except httpx.RequestError as exc:
         logger.error(f"Error de conexión en reset_user_ad: {exc}")
         return {

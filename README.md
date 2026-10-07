@@ -27,10 +27,10 @@ Valida el código de verificación TOTP / OTP ingresado por el empleado.
 
 ### 3. `reset_user_ad_sa`
 Restablece la contraseña de una cuenta en el Active Directory de Provident.
-> **Codificación automática:** Recibe la nueva contraseña en **texto plano** (ej. `"NuevaPswSETXX.."`) y el servidor la codifica automáticamente en **Base64** antes de enviar la petición.
+> **Generación automática:** Si no se especifica `new_password`, el servidor genera automáticamente una contraseña temporal segura de al menos 12 caracteres (con mayúsculas, minúsculas, números y signo) y la retorna en `temporary_password`. La contraseña se codifica automáticamente en Base64 para su envío al Active Directory.
 * **Parámetros:**
-  * `sam_account_name` *(string, obligatorio)*: Cuenta de usuario a resetear (ejemplo: `"ramiroha"`).
-  * `new_password` *(string, obligatorio)*: Nueva contraseña en texto plano.
+  * `sam_account_name` *(string, obligatorio)*: Cuenta de usuario a resetear.
+  * `new_password` *(string, opcional)*: Contraseña personalizada en texto plano (si se omite, el servidor la genera).
   * `ad_user` *(string, opcional)*: Usuario de servicio del AD (por defecto toma el configurado en `.env`: `chatbot.connect`).
   * `ad_server` *(string, opcional)*: Servidor de Active Directory (por defecto toma el de `.env`: `ADProviTest01.ProvidentMX.Test`).
   * `token` *(string, opcional)*: Token Bearer JWT personalizado.

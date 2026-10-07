@@ -4,11 +4,27 @@ import json
 import unittest
 from unittest.mock import AsyncMock, patch
 
-from client_api import encode_base64, reset_user_ad_request, send_totp_request, validate_totp_request
+from client_api import (
+    encode_base64,
+    generate_secure_password,
+    reset_user_ad_request,
+    send_totp_request,
+    validate_totp_request,
+)
 from server import mcp_server
 
 
 class TestProvidentMCP(unittest.TestCase):
+
+    def test_generate_secure_password(self):
+        """Verifica que la contraseña generada cumpla las políticas mínimas."""
+        for _ in range(10):
+            pwd = generate_secure_password(12)
+            self.assertGreaterEqual(len(pwd), 12)
+            self.assertTrue(any(c.isupper() for c in pwd), "Debe contener mayúsculas")
+            self.assertTrue(any(c.islower() for c in pwd), "Debe contener minúsculas")
+            self.assertTrue(any(c.isdigit() for c in pwd), "Debe contener dígitos")
+            self.assertTrue(any(c in "!@#$%&*-_=+" for c in pwd), "Debe contener un signo especial")
 
     def test_base64_encoding(self):
         """Verifica que la codificación Base64 coincida con el formato esperado."""
@@ -67,8 +83,40 @@ class TestProvidentMCP(unittest.TestCase):
         self.assertEqual(call_args[1]["json"], {"numeroEmpleado": "10005", "otp": "493927"})
 
     @patch("httpx.AsyncClient.put")
-    def test_reset_user_ad_request_mocked(self, mock_put):
-        """Verifica la codificación de contraseña y construcción de PUT para resetUserADSA."""
+    def test_reset_user_ad_request_auto_generated_password(self, mock_put):
+        """Verifica que si no se proporciona new_password, el servidor genere una automáticamente."""
+        mock_response = unittest.mock.MagicMock()
+        mock_response.status_code = 200
+        mock_response.is_success = True
+        mock_response.json.return_value = {
+            "status": "success",
+            "message": "Password reset successful",
+        }
+        mock_put.return_value = mock_response
+
+        result = asyncio.run(
+            reset_user_ad_request(
+                sam_account_name="ramiroha",
+            )
+        )
+
+        self.assertTrue(result["success"])
+        self.assertEqual(result["http_status"], 200)
+        self.assertIn("temporary_password", result)
+        generated_pwd = result["temporary_password"]
+        self.assertGreaterEqual(len(generated_pwd), 12)
+
+        # Verificar llamada
+        call_args = mock_put.call_args
+        self.assertIn("/Active Directory/SA/resetUserADSA", call_args[0][0])
+        sent_payload = call_args[1]["json"]
+        self.assertEqual(sent_payload["SamAccountName"], "ramiroha")
+        self.assertEqual(sent_payload["psw"], encode_base64(generated_pwd))
+        self.assertEqual(sent_payload["ADUser"], "chatbot.connect")
+
+    @patch("httpx.AsyncClient.put")
+    def test_reset_user_ad_request_custom_password(self, mock_put):
+        """Verifica el reseteo con contraseña explícita."""
         mock_response = unittest.mock.MagicMock()
         mock_response.status_code = 200
         mock_response.is_success = True
@@ -86,17 +134,9 @@ class TestProvidentMCP(unittest.TestCase):
         )
 
         self.assertTrue(result["success"])
-        self.assertEqual(result["http_status"], 200)
-
-        # Verificar llamada
-        call_args = mock_put.call_args
-        self.assertIn("/Active Directory/SA/resetUserADSA", call_args[0][0])
-        sent_payload = call_args[1]["json"]
-        self.assertEqual(sent_payload["SamAccountName"], "ramiroha")
+        self.assertEqual(result["temporary_password"], "NuevaPswSETXX..")
+        sent_payload = mock_put.call_args[1]["json"]
         self.assertEqual(sent_payload["psw"], "TnVldmFQc3dTRVRYWC4u")
-        self.assertEqual(sent_payload["ADUser"], "chatbot.connect")
-        self.assertEqual(sent_payload["ADPsw"], "InpqcVN6Uk4xRnpUQWFq")
-        self.assertEqual(sent_payload["ADSAServer"], "ADProviTest01.ProvidentMX.Test")
 
     def test_mcp_tools_registration(self):
         """Verifica que las 3 herramientas estén registradas en el servidor MCP con sus esquemas."""
@@ -111,9 +151,9 @@ class TestProvidentMCP(unittest.TestCase):
         tool_reset = next(t for t in tools if t.name == "reset_user_ad_sa")
         properties = tool_reset.input_schema["properties"]
         self.assertIn("sam_account_name", properties)
-        self.assertIn("new_password", properties)
         self.assertIn("sam_account_name", tool_reset.input_schema["required"])
-        self.assertIn("new_password", tool_reset.input_schema["required"])
+        # new_password ahora es opcional
+        self.assertNotIn("new_password", tool_reset.input_schema.get("required", []))
 
 
 if __name__ == "__main__":
