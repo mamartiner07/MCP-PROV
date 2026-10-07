@@ -18,7 +18,7 @@ AD_DEFAULT_PSW = os.getenv("AD_DEFAULT_PSW", "")
 AD_DEFAULT_SERVER = os.getenv("AD_DEFAULT_SERVER", "ADProviTest01.ProvidentMX.Test")
 
 # Configuración de red y timeouts
-HTTP_TIMEOUT = float(os.getenv("HTTP_TIMEOUT", "30.0"))
+HTTP_TIMEOUT = float(os.getenv("HTTP_TIMEOUT", "120.0"))
 VERIFY_SSL = os.getenv("VERIFY_SSL", "true").lower() in ("true", "1", "yes")
 
 # Configuración del servidor MCP HTTP (Copilot Studio)

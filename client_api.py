@@ -182,10 +182,19 @@ async def reset_user_ad_request(
                 result["temporary_password"] = password_to_set
 
             return result
+    except httpx.TimeoutException as exc:
+        logger.error(
+            f"Timeout de espera ({HTTP_TIMEOUT}s) al contactar Active Directory: {type(exc).__name__}"
+        )
+        return {
+            "http_status": 504,
+            "success": False,
+            "error": f"El servicio de Active Directory tardó más de {HTTP_TIMEOUT} segundos en responder (Timeout).",
+        }
     except httpx.RequestError as exc:
-        logger.error(f"Error de conexión en reset_user_ad: {exc}")
+        logger.error(f"Error de conexión en reset_user_ad ({type(exc).__name__}): {exc}")
         return {
             "http_status": 500,
             "success": False,
-            "error": f"Error de conexión con el servicio de Active Directory: {str(exc)}",
+            "error": f"Error de conexión con el servicio de Active Directory: {type(exc).__name__} - {str(exc)}",
         }
