@@ -122,8 +122,12 @@ Copilot Studio se ejecuta en la nube de Microsoft (Power Platform), por lo que n
    * **Nombre:** `Provident MCP`
    * **Descripción:** `Herramientas para autenticación TOTP y reseteo de Active Directory en Provident.`
    * **URL del servidor (Server URL):** `https://<tu-url-publica>/mcp`
-   * **Tipo de autenticación:** `None` (o API Key si configuras un reverse proxy intermedio).
+   * **Tipo de autenticación:** `API Key`
+     * **Parameter type:** `Header`
+     * **Header name:** `X-API-Key`
+     * **Key value:** El valor configurado en tu variable `MCP_API_KEY`.
 6. Haz clic en **Guardar/Conectar**. Copilot Studio descubrirá automáticamente las 3 herramientas (`send_totp_provident`, `validate_totp_provident`, `reset_user_ad_sa`).
+7. **Instrucciones del Agente (System Prompt):** En la pestaña *Instructions* de tu agente, copia y pega el contenido del archivo [SYSTEM_PROMPT.md](SYSTEM_PROMPT.md) incluido en este repositorio.
 
 ---
 
