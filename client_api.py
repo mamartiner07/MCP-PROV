@@ -301,7 +301,7 @@ async def reset_user_ad_request(
                 if phone and str(phone).strip():
                     clean_phone = str(phone).strip()
                     sms_message = (
-                        f"Provident: Tu contrasena temporal de Active Directory es: {password_to_set}. "
+                        f"Tu contrasena temporal de Active Directory es: {password_to_set}. "
                         "Por seguridad, el sistema te solicitara cambiarla en tu primer acceso."
                     )
                     sms_response = await send_sms_chatbridge_request(
