@@ -96,10 +96,10 @@ class TestProvidentMCP(unittest.TestCase):
 
     @patch("httpx.AsyncClient.post")
     def test_validate_totp_request_with_ad_result(self, mock_post):
-        """Verifica la extracción automática de sam_account_name desde result.AD."""
+        """Verifica la extracción automática de sam_account_name desde result.AD con HTTP 302."""
         mock_response = unittest.mock.MagicMock()
-        mock_response.status_code = 200
-        mock_response.is_success = True
+        mock_response.status_code = 302
+        mock_response.is_success = False
         mock_response.json.return_value = {
             "status": "success",
             "message": "registro encontrado",

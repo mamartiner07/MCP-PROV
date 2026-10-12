@@ -100,9 +100,16 @@ async def send_totp_request(
             except Exception:
                 data = {"raw_response": response.text}
 
+            is_successful = response.is_success
+            if isinstance(data, dict):
+                status_str = str(data.get("status", "")).strip().lower()
+                return_code = data.get("returnCode")
+                if status_str == "success" or return_code in (200, 302):
+                    is_successful = True
+
             return {
                 "http_status": response.status_code,
-                "success": response.is_success,
+                "success": is_successful,
                 "data": data,
             }
     except httpx.RequestError as exc:
@@ -136,9 +143,17 @@ async def validate_totp_request(
             except Exception:
                 data = {"raw_response": response.text}
 
+            # En Provident, HTTP 302 con returnCode 302 significa "registro encontrado" (éxito)
+            is_successful = response.is_success
+            if isinstance(data, dict):
+                status_str = str(data.get("status", "")).strip().lower()
+                return_code = data.get("returnCode")
+                if status_str == "success" or return_code in (200, 302):
+                    is_successful = True
+
             ad_account = None
             phone = None
-            if response.is_success and isinstance(data, dict):
+            if is_successful and isinstance(data, dict):
                 result_obj = data.get("result")
                 ad_raw = ""
                 if isinstance(result_obj, dict):
@@ -157,7 +172,7 @@ async def validate_totp_request(
 
             return {
                 "http_status": response.status_code,
-                "success": response.is_success,
+                "success": is_successful,
                 "data": data,
                 "sam_account_name": ad_account,
                 "phone": phone,
@@ -267,12 +282,19 @@ async def reset_user_ad_request(
             except Exception:
                 data = {"raw_response": response.text}
 
+            is_successful = response.is_success
+            if isinstance(data, dict):
+                status_str = str(data.get("status", "")).strip().lower()
+                return_code = data.get("returnCode")
+                if status_str == "success" or return_code in (200, 302):
+                    is_successful = True
+
             result: Dict[str, Any] = {
                 "http_status": response.status_code,
-                "success": response.is_success,
+                "success": is_successful,
                 "data": data,
             }
-            if response.is_success:
+            if is_successful:
                 result["temporary_password"] = password_to_set
 
                 # Si se proporcionó número telefónico, enviar la contraseña temporal por SMS vía ChatBridge
