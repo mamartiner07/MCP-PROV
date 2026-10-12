@@ -11,6 +11,9 @@ from config import (
     AD_DEFAULT_SERVER,
     AD_DEFAULT_USER,
     BASE_API_URL,
+    CHATBRIDGE_API_KEY,
+    CHATBRIDGE_SMS_MASK,
+    CHATBRIDGE_SMS_URL,
     DEFAULT_BEARER_TOKEN,
     HTTP_TIMEOUT,
     VERIFY_SSL,
@@ -134,13 +137,19 @@ async def validate_totp_request(
                 data = {"raw_response": response.text}
 
             ad_account = None
+            phone = None
             if response.is_success and isinstance(data, dict):
                 result_obj = data.get("result")
                 ad_raw = ""
                 if isinstance(result_obj, dict):
                     ad_raw = result_obj.get("AD") or result_obj.get("ad") or ""
+                    phone_raw = result_obj.get("phone") or result_obj.get("telefono") or ""
+                    if phone_raw:
+                        phone = str(phone_raw).strip()
                 elif "AD" in data:
                     ad_raw = data.get("AD") or ""
+                if not phone and "phone" in data:
+                    phone = str(data.get("phone")).strip()
 
                 clean_ad = sanitize_sam_account_name(ad_raw)
                 if clean_ad:
@@ -151,6 +160,7 @@ async def validate_totp_request(
                 "success": response.is_success,
                 "data": data,
                 "sam_account_name": ad_account,
+                "phone": phone,
             }
     except httpx.RequestError as exc:
         logger.error(f"Error de conexión en validate_totp: {exc}")
@@ -161,8 +171,58 @@ async def validate_totp_request(
         }
 
 
+async def send_sms_chatbridge_request(
+    to: str,
+    text: str,
+    mask: Optional[str] = None,
+    api_key: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Envía un mensaje SMS a través del servicio ChatBridge.
+    Endpoint: POST https://connect.chatbridge.mx/v1/sms/messages
+    Headers:
+      x-api-key: <API_KEY>
+      Content-Type: application/json
+    Payload:
+      {"mask": "...", "to": "...", "text": "..."}
+    """
+    url = CHATBRIDGE_SMS_URL
+    key = (api_key or CHATBRIDGE_API_KEY).strip()
+    headers = {
+        "Content-Type": "application/json",
+        "x-api-key": key,
+    }
+    payload = {
+        "mask": (mask or CHATBRIDGE_SMS_MASK).strip(),
+        "to": str(to).strip(),
+        "text": str(text).strip(),
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT, verify=VERIFY_SSL) as client:
+            response = await client.post(url, headers=headers, json=payload)
+            try:
+                data = response.json()
+            except Exception:
+                data = {"raw_response": response.text}
+
+            return {
+                "http_status": response.status_code,
+                "success": response.is_success,
+                "data": data,
+            }
+    except httpx.RequestError as exc:
+        logger.error(f"Error de conexión en send_sms_chatbridge: {exc}")
+        return {
+            "http_status": 500,
+            "success": False,
+            "error": f"Error de conexión con el servicio ChatBridge SMS: {str(exc)}",
+        }
+
+
 async def reset_user_ad_request(
     sam_account_name: str,
+    phone: Optional[str] = None,
     new_password: Optional[str] = None,
     ad_user: Optional[str] = None,
     ad_psw: Optional[str] = None,
@@ -175,6 +235,7 @@ async def reset_user_ad_request(
     Si 'new_password' no se proporciona o está vacío, el servidor genera automáticamente
     una contraseña temporal segura de al menos 12 caracteres (con mayúsculas, minúsculas, números y un signo).
     La contraseña se codifica automáticamente en Base64 para el envío.
+    Si se proporciona 'phone', se envía de inmediato un SMS con la contraseña temporal vía ChatBridge.
     """
     url = f"{AD_API_URL}/Active Directory/SA/resetUserADSA"
     headers = _get_headers(token)
@@ -213,6 +274,24 @@ async def reset_user_ad_request(
             }
             if response.is_success:
                 result["temporary_password"] = password_to_set
+
+                # Si se proporcionó número telefónico, enviar la contraseña temporal por SMS vía ChatBridge
+                if phone and str(phone).strip():
+                    clean_phone = str(phone).strip()
+                    sms_message = (
+                        f"Provident: Tu contrasena temporal de Active Directory es: {password_to_set}. "
+                        "Por seguridad, el sistema te solicitara cambiarla en tu primer acceso."
+                    )
+                    sms_response = await send_sms_chatbridge_request(
+                        to=clean_phone,
+                        text=sms_message,
+                    )
+                    result["sms_notification"] = {
+                        "sent": sms_response.get("success", False),
+                        "to": clean_phone,
+                        "http_status": sms_response.get("http_status"),
+                        "details": sms_response.get("data") or sms_response.get("error"),
+                    }
 
             return result
     except httpx.TimeoutException as exc:

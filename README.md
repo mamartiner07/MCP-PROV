@@ -28,14 +28,23 @@ Valida el código de verificación TOTP / OTP ingresado por el empleado.
 
 ### 3. `reset_user_ad_sa`
 Restablece la contraseña de una cuenta en el Active Directory de Provident.
-> **Generación automática y sanitización:** Si no se especifica `new_password`, el servidor genera automáticamente una contraseña temporal segura de al menos 12 caracteres (con mayúsculas, minúsculas, números y signo) y la retorna en `temporary_password`. Sanitiza automáticamente prefijos de dominio (ej. `PROVIDENTMX/` o `PROVIDENTMX\`) asegurando que solo viaje el `SamAccountName` al directorio activo. La contraseña se codifica automáticamente en Base64 para su envío al Active Directory.
+> **Generación automática, sanitización y entrega por SMS:** Si no se especifica `new_password`, el servidor genera automáticamente una contraseña temporal segura de al menos 12 caracteres (con mayúsculas, minúsculas, números y signo). Sanitiza automáticamente prefijos de dominio (ej. `PROVIDENTMX/` o `PROVIDENTMX\`). Si se incluye el parámetro `phone`, el servidor envía automáticamente la contraseña temporal por SMS a dicho número celular a través de ChatBridge, garantizando que **no deba ser revelada en el chat**.
 * **Parámetros:**
   * `sam_account_name` *(string, obligatorio)*: Cuenta de usuario a resetear (acepta tanto el nombre directo como con prefijo de dominio).
+  * `phone` *(string, opcional)*: Número de teléfono celular registrado para envío automático de la contraseña por SMS.
   * `new_password` *(string, opcional)*: Contraseña personalizada en texto plano (si se omite, el servidor la genera).
   * `ad_user` *(string, opcional)*: Usuario de servicio del AD (por defecto toma el configurado en `.env`: `chatbot.connect`).
   * `ad_server` *(string, opcional)*: Servidor de Active Directory (por defecto toma el de `.env`: `ADProviTest01.ProvidentMX.Test`).
   * `token` *(string, opcional)*: Token Bearer JWT personalizado.
 * **Endpoint subyacente:** `PUT https://api.supporttsmx.com.mx:6443/Active Directory/SA/resetUserADSA`
+
+### 4. `send_sms_provident`
+Envía un mensaje SMS a través del servicio ChatBridge al teléfono celular del empleado.
+* **Parámetros:**
+  * `to` *(string, obligatorio)*: Número de teléfono celular destino (ejemplo: `"5519231854"`).
+  * `text` *(string, obligatorio)*: Mensaje de texto a enviar.
+  * `api_key` *(string, opcional)*: API Key de ChatBridge personalizada.
+* **Endpoint subyacente:** `POST https://connect.chatbridge.mx/v1/sms/messages`
 
 ---
 
@@ -86,6 +95,11 @@ AD_DEFAULT_SERVER=ADProviTest01.ProvidentMX.Test
 MCP_HOST=0.0.0.0
 MCP_PORT=8000
 MCP_PATH=/mcp
+
+# Configuración ChatBridge SMS (Envío de contraseñas temporales)
+CHATBRIDGE_API_KEY=tu_api_key_chatbridge_aqui
+CHATBRIDGE_SMS_URL=https://connect.chatbridge.mx/v1/sms/messages
+CHATBRIDGE_SMS_MASK=6aac0ecdb99ccfcfa56bbc2d
 ```
 
 ---

@@ -9,6 +9,7 @@ from client_api import (
     generate_secure_password,
     reset_user_ad_request,
     sanitize_sam_account_name,
+    send_sms_chatbridge_request,
     send_totp_request,
     validate_totp_request,
 )
@@ -118,6 +119,7 @@ class TestProvidentMCP(unittest.TestCase):
 
         self.assertTrue(result["success"])
         self.assertEqual(result["sam_account_name"], "ramiroha")
+        self.assertEqual(result["phone"], "5519231854")
         self.assertEqual(result["data"]["result"]["AD"], "PROVIDENTMX/ramiroha")
 
     @patch("httpx.AsyncClient.post")
@@ -145,6 +147,73 @@ class TestProvidentMCP(unittest.TestCase):
 
         self.assertTrue(result["success"])
         self.assertIsNone(result["sam_account_name"])
+        self.assertEqual(result["phone"], "5519231854")
+
+    @patch("httpx.AsyncClient.post")
+    def test_send_sms_chatbridge_request(self, mock_post):
+        """Verifica la petición HTTP para envío de SMS vía ChatBridge."""
+        mock_response = unittest.mock.MagicMock()
+        mock_response.status_code = 200
+        mock_response.is_success = True
+        mock_response.json.return_value = {
+            "status": "success",
+            "message": "Message sent successfully",
+        }
+        mock_post.return_value = mock_response
+
+        result = asyncio.run(
+            send_sms_chatbridge_request(
+                to="5519231854",
+                text="Tu contraseña es 12345",
+            )
+        )
+
+        self.assertTrue(result["success"])
+        self.assertEqual(result["http_status"], 200)
+
+        # Verificar headers y payload
+        call_args = mock_post.call_args
+        self.assertIn("/v1/sms/messages", call_args[0][0])
+        self.assertEqual(call_args[1]["headers"]["Content-Type"], "application/json")
+        self.assertIn("x-api-key", call_args[1]["headers"])
+        sent_payload = call_args[1]["json"]
+        self.assertEqual(sent_payload["to"], "5519231854")
+        self.assertEqual(sent_payload["text"], "Tu contraseña es 12345")
+        self.assertEqual(sent_payload["mask"], "6aac0ecdb99ccfcfa56bbc2d")
+
+    @patch("httpx.AsyncClient.post")
+    @patch("httpx.AsyncClient.put")
+    def test_reset_user_ad_request_with_phone_triggers_sms(self, mock_put, mock_post):
+        """Verifica que si se envía phone a reset_user_ad_request, se despache el SMS automáticamente."""
+        ad_response = unittest.mock.MagicMock()
+        ad_response.status_code = 200
+        ad_response.is_success = True
+        ad_response.json.return_value = {"status": "success", "message": "Reset OK"}
+        mock_put.return_value = ad_response
+
+        sms_response = unittest.mock.MagicMock()
+        sms_response.status_code = 200
+        sms_response.is_success = True
+        sms_response.json.return_value = {"status": "sent"}
+        mock_post.return_value = sms_response
+
+        result = asyncio.run(
+            reset_user_ad_request(
+                sam_account_name="ramiroha",
+                phone="5519231854",
+            )
+        )
+
+        self.assertTrue(result["success"])
+        self.assertIn("sms_notification", result)
+        self.assertTrue(result["sms_notification"]["sent"])
+        self.assertEqual(result["sms_notification"]["to"], "5519231854")
+
+        # Verificar que httpx.post fue invocado con el SMS conteniendo la contraseña generada
+        mock_post.assert_called_once()
+        sent_sms = mock_post.call_args[1]["json"]
+        self.assertEqual(sent_sms["to"], "5519231854")
+        self.assertIn(result["temporary_password"], sent_sms["text"])
 
     @patch("httpx.AsyncClient.put")
     def test_reset_user_ad_request_sanitizes_domain_prefix(self, mock_put):
@@ -225,22 +294,33 @@ class TestProvidentMCP(unittest.TestCase):
         self.assertEqual(sent_payload["psw"], "TnVldmFQc3dTRVRYWC4u")
 
     def test_mcp_tools_registration(self):
-        """Verifica que las 3 herramientas estén registradas en el servidor MCP con sus esquemas."""
+        """Verifica que las 4 herramientas estén registradas en el servidor MCP con sus esquemas."""
         tools = asyncio.run(mcp_server.list_tools())
         tool_names = [t.name for t in tools]
 
         self.assertIn("send_totp_provident", tool_names)
         self.assertIn("validate_totp_provident", tool_names)
         self.assertIn("reset_user_ad_sa", tool_names)
+        self.assertIn("send_sms_provident", tool_names)
 
         # Validar herramienta reset_user_ad_sa
         tool_reset = next(t for t in tools if t.name == "reset_user_ad_sa")
         properties = tool_reset.input_schema["properties"]
         self.assertIn("sam_account_name", properties)
+        self.assertIn("phone", properties)
         self.assertIn("sam_account_name", tool_reset.input_schema["required"])
-        # new_password ahora es opcional
+        self.assertNotIn("phone", tool_reset.input_schema.get("required", []))
         self.assertNotIn("new_password", tool_reset.input_schema.get("required", []))
+
+        # Validar herramienta send_sms_provident
+        tool_sms = next(t for t in tools if t.name == "send_sms_provident")
+        sms_properties = tool_sms.input_schema["properties"]
+        self.assertIn("to", sms_properties)
+        self.assertIn("text", sms_properties)
+        self.assertIn("to", tool_sms.input_schema["required"])
+        self.assertIn("text", tool_sms.input_schema["required"])
 
 
 if __name__ == "__main__":
     unittest.main()
+

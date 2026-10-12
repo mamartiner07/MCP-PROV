@@ -12,6 +12,7 @@ from starlette.responses import JSONResponse
 from config import MCP_API_KEY, MCP_HOST, MCP_PATH, MCP_PORT, MCP_TRANSPORT
 from client_api import (
     reset_user_ad_request,
+    send_sms_chatbridge_request,
     send_totp_request,
     validate_totp_request,
 )
@@ -98,20 +99,22 @@ async def validate_totp_provident(
 
 @mcp_server.tool(
     name="reset_user_ad_sa",
-    description="Restablece la contraseña de una cuenta en Active Directory (AD) de Provident. El servidor genera automáticamente una contraseña temporal segura de al menos 12 caracteres (con mayúsculas, minúsculas, números y un signo) y la retorna en 'temporary_password' para que el asistente se la entregue al usuario. Limpia automáticamente prefijos de dominio como 'PROVIDENTMX/'.",
+    description="Restablece la contraseña de una cuenta en Active Directory (AD) de Provident y limpia prefijos de dominio. El servidor genera automáticamente una contraseña temporal segura de al menos 12 caracteres. Si se especifica 'phone', el servidor envía de inmediato la contraseña temporal por SMS vía ChatBridge para que NO sea expuesta en el chat.",
 )
 async def reset_user_ad_sa(
     sam_account_name: str,
+    phone: Optional[str] = None,
     new_password: Optional[str] = None,
     ad_user: Optional[str] = None,
     ad_server: Optional[str] = None,
     token: Optional[str] = None,
 ) -> str:
     """
-    Restablece la contraseña de un usuario en Active Directory.
+    Restablece la contraseña de un usuario en Active Directory y opcionalmente la envía por SMS.
 
     Args:
         sam_account_name: Nombre de usuario o cuenta SamAccountName.
+        phone: (Opcional) Teléfono celular registrado del empleado (ej. obtenido de validate_totp_provident) para enviar la contraseña temporal por SMS vía ChatBridge sin exponerla en el chat.
         new_password: (Opcional) Contraseña en texto plano. Si se omite, el servidor genera una automáticamente.
         ad_user: (Opcional) Usuario administrador del AD (por defecto configurado en .env).
         ad_server: (Opcional) Servidor AD destino (por defecto configurado en .env).
@@ -119,12 +122,35 @@ async def reset_user_ad_sa(
     """
     result = await reset_user_ad_request(
         sam_account_name=sam_account_name,
+        phone=phone,
         new_password=new_password,
         ad_user=ad_user,
         ad_server=ad_server,
         token=token,
     )
     return json.dumps(result, ensure_ascii=False, indent=2)
+
+
+@mcp_server.tool(
+    name="send_sms_provident",
+    description="Envía un mensaje SMS a través del servicio ChatBridge al teléfono celular del empleado. Útil para el envío seguro de contraseñas temporales y notificaciones.",
+)
+async def send_sms_provident(
+    to: str,
+    text: str,
+    api_key: Optional[str] = None,
+) -> str:
+    """
+    Envía un mensaje SMS a través de ChatBridge.
+
+    Args:
+        to: Número de teléfono celular destino (ej. '5519231854').
+        text: Texto del mensaje a enviar por SMS (ej. con la contraseña temporal).
+        api_key: (Opcional) API Key de ChatBridge si se desea sobreescribir la configurada en .env.
+    """
+    result = await send_sms_chatbridge_request(to=to, text=text, api_key=api_key)
+    return json.dumps(result, ensure_ascii=False, indent=2)
+
 
 
 class APIKeyAuthMiddleware(BaseHTTPMiddleware):

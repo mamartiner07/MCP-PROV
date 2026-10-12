@@ -29,3 +29,13 @@ MCP_TRANSPORT = os.getenv("MCP_TRANSPORT", "streamable-http")
 
 # Clave de autenticación para clientes MCP entrantes (Copilot Studio)
 MCP_API_KEY = os.getenv("MCP_API_KEY", "")
+
+# Configuración del servicio ChatBridge SMS
+CHATBRIDGE_API_KEY = os.getenv("CHATBRIDGE_API_KEY", "")
+CHATBRIDGE_SMS_URL = os.getenv(
+    "CHATBRIDGE_SMS_URL", "https://connect.chatbridge.mx/v1/sms/messages"
+)
+CHATBRIDGE_SMS_MASK = os.getenv(
+    "CHATBRIDGE_SMS_MASK", "6aac0ecdb99ccfcfa56bbc2d"
+)
+

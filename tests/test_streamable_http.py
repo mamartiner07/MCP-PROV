@@ -97,6 +97,7 @@ class TestStreamableHTTP(unittest.TestCase):
             self.assertIn("send_totp_provident", resp_list.text)
             self.assertIn("validate_totp_provident", resp_list.text)
             self.assertIn("reset_user_ad_sa", resp_list.text)
+            self.assertIn("send_sms_provident", resp_list.text)
 
             # 3. Copilot Studio invoca una herramienta (tools/call)
             call_payload = {
