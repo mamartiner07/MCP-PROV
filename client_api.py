@@ -53,6 +53,22 @@ def encode_base64(text: str) -> str:
     return base64.b64encode(text.encode("utf-8")).decode("utf-8")
 
 
+def sanitize_sam_account_name(account_name: Optional[str]) -> str:
+    """
+    Limpia y extrae el SamAccountName eliminando prefijos de dominio o barras
+    (ej. 'PROVIDENTMX/ramiroha' o 'PROVIDENTMX\\ramiroha' -> 'ramiroha').
+    Retorna una cadena vacía si no es un valor válido.
+    """
+    if not account_name:
+        return ""
+    clean = str(account_name).strip()
+    if "/" in clean:
+        clean = clean.split("/")[-1].strip()
+    if "\\" in clean:
+        clean = clean.split("\\")[-1].strip()
+    return clean
+
+
 def _get_headers(token: Optional[str] = None) -> Dict[str, str]:
     """Genera las cabeceras HTTP necesarias incluyendo el token Bearer."""
     auth_token = token or DEFAULT_BEARER_TOKEN
@@ -117,10 +133,24 @@ async def validate_totp_request(
             except Exception:
                 data = {"raw_response": response.text}
 
+            ad_account = None
+            if response.is_success and isinstance(data, dict):
+                result_obj = data.get("result")
+                ad_raw = ""
+                if isinstance(result_obj, dict):
+                    ad_raw = result_obj.get("AD") or result_obj.get("ad") or ""
+                elif "AD" in data:
+                    ad_raw = data.get("AD") or ""
+
+                clean_ad = sanitize_sam_account_name(ad_raw)
+                if clean_ad:
+                    ad_account = clean_ad
+
             return {
                 "http_status": response.status_code,
                 "success": response.is_success,
                 "data": data,
+                "sam_account_name": ad_account,
             }
     except httpx.RequestError as exc:
         logger.error(f"Error de conexión en validate_totp: {exc}")
@@ -157,11 +187,14 @@ async def reset_user_ad_request(
 
     encoded_password = encode_base64(password_to_set)
 
+    # Sanitizar SamAccountName eliminando prefijos de dominio (ej. PROVIDENTMX/usuario)
+    cleaned_sam = sanitize_sam_account_name(sam_account_name)
+
     payload = {
         "ADUser": (ad_user or AD_DEFAULT_USER).strip(),
         "ADPsw": (ad_psw or AD_DEFAULT_PSW).strip(),
         "ADSAServer": (ad_server or AD_DEFAULT_SERVER).strip(),
-        "SamAccountName": str(sam_account_name).strip(),
+        "SamAccountName": cleaned_sam if cleaned_sam else str(sam_account_name).strip(),
         "psw": encoded_password,
     }
 

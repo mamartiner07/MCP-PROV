@@ -8,6 +8,7 @@ from client_api import (
     encode_base64,
     generate_secure_password,
     reset_user_ad_request,
+    sanitize_sam_account_name,
     send_totp_request,
     validate_totp_request,
 )
@@ -15,6 +16,15 @@ from server import mcp_server
 
 
 class TestProvidentMCP(unittest.TestCase):
+
+    def test_sanitize_sam_account_name(self):
+        """Verifica la limpieza de prefijos de dominio en SamAccountName."""
+        self.assertEqual(sanitize_sam_account_name("PROVIDENTMX/ramiroha"), "ramiroha")
+        self.assertEqual(sanitize_sam_account_name("PROVIDENTMX\\ramiroha"), "ramiroha")
+        self.assertEqual(sanitize_sam_account_name("ramiroha"), "ramiroha")
+        self.assertEqual(sanitize_sam_account_name("  PROVIDENTMX/ramiroha  "), "ramiroha")
+        self.assertEqual(sanitize_sam_account_name(""), "")
+        self.assertEqual(sanitize_sam_account_name(None), "")
 
     def test_generate_secure_password(self):
         """Verifica que la contraseña generada cumpla las políticas mínimas."""
@@ -76,11 +86,87 @@ class TestProvidentMCP(unittest.TestCase):
 
         self.assertTrue(result["success"])
         self.assertEqual(result["http_status"], 200)
+        self.assertIsNone(result["sam_account_name"])
 
         # Verificar payload
         call_args = mock_post.call_args
         self.assertIn("/RA/PROVIDENT/validateTOTPProvident", call_args[0][0])
         self.assertEqual(call_args[1]["json"], {"numeroEmpleado": "10005", "otp": "493927"})
+
+    @patch("httpx.AsyncClient.post")
+    def test_validate_totp_request_with_ad_result(self, mock_post):
+        """Verifica la extracción automática de sam_account_name desde result.AD."""
+        mock_response = unittest.mock.MagicMock()
+        mock_response.status_code = 200
+        mock_response.is_success = True
+        mock_response.json.return_value = {
+            "status": "success",
+            "message": "registro encontrado",
+            "function": "validateTOTPProvident",
+            "modulo": "Robot Assistant",
+            "returnCode": 302,
+            "result": {
+                "phone": "5519231854",
+                "email": "Mario Aldair Reyes Martinez",
+                "name": "lupita.chat@provident.com.mx",
+                "AD": "PROVIDENTMX/ramiroha",
+            },
+        }
+        mock_post.return_value = mock_response
+
+        result = asyncio.run(validate_totp_request(numero_empleado="10005", otp="493927"))
+
+        self.assertTrue(result["success"])
+        self.assertEqual(result["sam_account_name"], "ramiroha")
+        self.assertEqual(result["data"]["result"]["AD"], "PROVIDENTMX/ramiroha")
+
+    @patch("httpx.AsyncClient.post")
+    def test_validate_totp_request_with_empty_ad(self, mock_post):
+        """Verifica que sam_account_name sea None si el campo AD está vacío."""
+        mock_response = unittest.mock.MagicMock()
+        mock_response.status_code = 200
+        mock_response.is_success = True
+        mock_response.json.return_value = {
+            "status": "success",
+            "message": "registro encontrado",
+            "function": "validateTOTPProvident",
+            "modulo": "Robot Assistant",
+            "returnCode": 302,
+            "result": {
+                "phone": "5519231854",
+                "email": "Mario Aldair Reyes Martinez",
+                "name": "lupita.chat@provident.com.mx",
+                "AD": "",
+            },
+        }
+        mock_post.return_value = mock_response
+
+        result = asyncio.run(validate_totp_request(numero_empleado="10005", otp="493927"))
+
+        self.assertTrue(result["success"])
+        self.assertIsNone(result["sam_account_name"])
+
+    @patch("httpx.AsyncClient.put")
+    def test_reset_user_ad_request_sanitizes_domain_prefix(self, mock_put):
+        """Verifica que reset_user_ad_request limpie el prefijo de dominio si se envía PROVIDENTMX/."""
+        mock_response = unittest.mock.MagicMock()
+        mock_response.status_code = 200
+        mock_response.is_success = True
+        mock_response.json.return_value = {
+            "status": "success",
+            "message": "Password reset successful",
+        }
+        mock_put.return_value = mock_response
+
+        result = asyncio.run(
+            reset_user_ad_request(
+                sam_account_name="PROVIDENTMX/ramiroha",
+            )
+        )
+
+        self.assertTrue(result["success"])
+        sent_payload = mock_put.call_args[1]["json"]
+        self.assertEqual(sent_payload["SamAccountName"], "ramiroha")
 
     @patch("httpx.AsyncClient.put")
     def test_reset_user_ad_request_auto_generated_password(self, mock_put):

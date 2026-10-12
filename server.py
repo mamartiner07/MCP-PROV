@@ -75,7 +75,7 @@ async def send_totp_provident(
 
 @mcp_server.tool(
     name="validate_totp_provident",
-    description="Valida el código de verificación TOTP / OTP ingresado por el empleado de Provident.",
+    description="Valida el código de verificación TOTP / OTP ingresado por el colaborador. Si el código es válido, devuelve los datos registrados incluyendo 'sam_account_name' y la cuenta de Active Directory ('AD') para el restablecimiento. Si 'sam_account_name' es nulo o el campo 'AD' está vacío, no se encontró una cuenta de red vinculada y se debe canalizar a la Mesa de Servicios.",
 )
 async def validate_totp_provident(
     numero_empleado: str,
@@ -98,7 +98,7 @@ async def validate_totp_provident(
 
 @mcp_server.tool(
     name="reset_user_ad_sa",
-    description="Restablece la contraseña de una cuenta en Active Directory (AD) de Provident. El servidor genera automáticamente una contraseña temporal segura de al menos 12 caracteres (con mayúsculas, minúsculas, números y un signo) y la retorna en 'temporary_password' para que el asistente se la entregue al usuario.",
+    description="Restablece la contraseña de una cuenta en Active Directory (AD) de Provident. El servidor genera automáticamente una contraseña temporal segura de al menos 12 caracteres (con mayúsculas, minúsculas, números y un signo) y la retorna en 'temporary_password' para que el asistente se la entregue al usuario. Limpia automáticamente prefijos de dominio como 'PROVIDENTMX/'.",
 )
 async def reset_user_ad_sa(
     sam_account_name: str,

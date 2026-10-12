@@ -19,6 +19,7 @@ Envía un código de seguridad TOTP / SMS al teléfono registrado del empleado.
 
 ### 2. `validate_totp_provident`
 Valida el código de verificación TOTP / OTP ingresado por el empleado.
+> **Extracción de cuenta AD:** Si el código es válido, el servidor extrae automáticamente la cuenta de Active Directory vinculada del campo `AD` y la entrega limpia en `sam_account_name` (ej. `PROVIDENTMX/ramiroha` -> `ramiroha`). Si no se encuentra una cuenta vinculada, retorna `null` para que el asistente canalice al colaborador a la Mesa de Servicios.
 * **Parámetros:**
   * `numero_empleado` *(string, obligatorio)*: Identificador del empleado (ejemplo: `"10005"`).
   * `otp` *(string, obligatorio)*: Código TOTP de 6 dígitos que el empleado recibió por SMS (ejemplo: `"493927"`).
@@ -27,9 +28,9 @@ Valida el código de verificación TOTP / OTP ingresado por el empleado.
 
 ### 3. `reset_user_ad_sa`
 Restablece la contraseña de una cuenta en el Active Directory de Provident.
-> **Generación automática:** Si no se especifica `new_password`, el servidor genera automáticamente una contraseña temporal segura de al menos 12 caracteres (con mayúsculas, minúsculas, números y signo) y la retorna en `temporary_password`. La contraseña se codifica automáticamente en Base64 para su envío al Active Directory.
+> **Generación automática y sanitización:** Si no se especifica `new_password`, el servidor genera automáticamente una contraseña temporal segura de al menos 12 caracteres (con mayúsculas, minúsculas, números y signo) y la retorna en `temporary_password`. Sanitiza automáticamente prefijos de dominio (ej. `PROVIDENTMX/` o `PROVIDENTMX\`) asegurando que solo viaje el `SamAccountName` al directorio activo. La contraseña se codifica automáticamente en Base64 para su envío al Active Directory.
 * **Parámetros:**
-  * `sam_account_name` *(string, obligatorio)*: Cuenta de usuario a resetear.
+  * `sam_account_name` *(string, obligatorio)*: Cuenta de usuario a resetear (acepta tanto el nombre directo como con prefijo de dominio).
   * `new_password` *(string, opcional)*: Contraseña personalizada en texto plano (si se omite, el servidor la genera).
   * `ad_user` *(string, opcional)*: Usuario de servicio del AD (por defecto toma el configurado en `.env`: `chatbot.connect`).
   * `ad_server` *(string, opcional)*: Servidor de Active Directory (por defecto toma el de `.env`: `ADProviTest01.ProvidentMX.Test`).
