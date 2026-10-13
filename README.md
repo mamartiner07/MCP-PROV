@@ -28,7 +28,7 @@ Valida el código de verificación TOTP / OTP ingresado por el empleado.
 
 ### 3. `reset_user_ad_sa`
 Restablece la contraseña de una cuenta en el Active Directory de Provident.
-> **Generación automática, sanitización y entrega por SMS:** Si no se especifica `new_password`, el servidor genera automáticamente una contraseña temporal segura de al menos 12 caracteres (con mayúsculas, minúsculas, números y signo). Sanitiza automáticamente prefijos de dominio (ej. `PROVIDENTMX/` o `PROVIDENTMX\`). Si se incluye el parámetro `phone`, el servidor envía automáticamente la contraseña temporal por SMS a dicho número celular a través de ChatBridge, garantizando que **no deba ser revelada en el chat**.
+> **Generación automática, sanitización y entrega por SMS:** Si no se especifica `new_password`, el servidor genera automáticamente una contraseña segura de al menos 12 caracteres (con mayúsculas, minúsculas, números y signo). Sanitiza automáticamente prefijos de dominio (ej. `PROVIDENTMX/` o `PROVIDENTMX\`). Si se incluye el parámetro `phone`, el servidor envía automáticamente la contraseña por SMS a dicho número celular a través de ChatBridge, garantizando que **no deba ser revelada en el chat**.
 * **Parámetros:**
   * `sam_account_name` *(string, obligatorio)*: Cuenta de usuario a resetear (acepta tanto el nombre directo como con prefijo de dominio).
   * `phone` *(string, opcional)*: Número de teléfono celular registrado para envío automático de la contraseña por SMS.
@@ -96,7 +96,7 @@ MCP_HOST=0.0.0.0
 MCP_PORT=8000
 MCP_PATH=/mcp
 
-# Configuración ChatBridge SMS (Envío de contraseñas temporales)
+# Configuración ChatBridge SMS (Envío de contraseñas)
 CHATBRIDGE_API_KEY=tu_api_key_chatbridge_aqui
 CHATBRIDGE_SMS_URL=https://connect.chatbridge.mx/v1/sms/messages
 CHATBRIDGE_SMS_MASK=6aac0ecdb99ccfcfa56bbc2d

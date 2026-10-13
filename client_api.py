@@ -248,9 +248,9 @@ async def reset_user_ad_request(
     Restablece la contraseña de un usuario en Active Directory.
     Endpoint: PUT /Active Directory/SA/resetUserADSA (puerto 6443)
     Si 'new_password' no se proporciona o está vacío, el servidor genera automáticamente
-    una contraseña temporal segura de al menos 12 caracteres (con mayúsculas, minúsculas, números y un signo).
+    una contraseña segura de al menos 12 caracteres (con mayúsculas, minúsculas, números y un signo).
     La contraseña se codifica automáticamente en Base64 para el envío.
-    Si se proporciona 'phone', se envía de inmediato un SMS con la contraseña temporal vía ChatBridge.
+    Si se proporciona 'phone', se envía de inmediato un SMS con la contraseña vía ChatBridge.
     """
     url = f"{AD_API_URL}/Active Directory/SA/resetUserADSA"
     headers = _get_headers(token)
@@ -297,13 +297,10 @@ async def reset_user_ad_request(
             if is_successful:
                 result["temporary_password"] = password_to_set
 
-                # Si se proporcionó número telefónico, enviar la contraseña temporal por SMS vía ChatBridge
+                # Si se proporcionó número telefónico, enviar la contraseña por SMS vía ChatBridge
                 if phone and str(phone).strip():
                     clean_phone = str(phone).strip()
-                    sms_message = (
-                        f"Tu contrasena temporal de Active Directory es: {password_to_set}. "
-                        "Por seguridad, el sistema te solicitara cambiarla en tu primer acceso."
-                    )
+                    sms_message = f"Tu contrasena de Active Directory es: {password_to_set}."
                     sms_response = await send_sms_chatbridge_request(
                         to=clean_phone,
                         text=sms_message,

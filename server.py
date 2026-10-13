@@ -99,7 +99,7 @@ async def validate_totp_provident(
 
 @mcp_server.tool(
     name="reset_user_ad_sa",
-    description="Restablece la contraseña de una cuenta en Active Directory (AD) de Provident y limpia prefijos de dominio. El servidor genera automáticamente una contraseña temporal segura de al menos 12 caracteres. Si se especifica 'phone', el servidor envía de inmediato la contraseña temporal por SMS vía ChatBridge para que NO sea expuesta en el chat.",
+    description="Restablece la contraseña de una cuenta en Active Directory (AD) de Provident y limpia prefijos de dominio. El servidor genera automáticamente una contraseña segura de al menos 12 caracteres. Si se especifica 'phone', el servidor envía de inmediato la contraseña por SMS vía ChatBridge para que NO sea expuesta en el chat.",
 )
 async def reset_user_ad_sa(
     sam_account_name: str,
@@ -114,7 +114,7 @@ async def reset_user_ad_sa(
 
     Args:
         sam_account_name: Nombre de usuario o cuenta SamAccountName.
-        phone: (Opcional) Teléfono celular registrado del empleado (ej. obtenido de validate_totp_provident) para enviar la contraseña temporal por SMS vía ChatBridge sin exponerla en el chat.
+        phone: (Opcional) Teléfono celular registrado del empleado (ej. obtenido de validate_totp_provident) para enviar la contraseña por SMS vía ChatBridge sin exponerla en el chat.
         new_password: (Opcional) Contraseña en texto plano. Si se omite, el servidor genera una automáticamente.
         ad_user: (Opcional) Usuario administrador del AD (por defecto configurado en .env).
         ad_server: (Opcional) Servidor AD destino (por defecto configurado en .env).
@@ -133,7 +133,7 @@ async def reset_user_ad_sa(
 
 @mcp_server.tool(
     name="send_sms_provident",
-    description="Envía un mensaje SMS a través del servicio ChatBridge al teléfono celular del empleado. Útil para el envío seguro de contraseñas temporales y notificaciones.",
+    description="Envía un mensaje SMS a través del servicio ChatBridge al teléfono celular del empleado. Útil para el envío seguro de contraseñas y notificaciones.",
 )
 async def send_sms_provident(
     to: str,
@@ -145,7 +145,7 @@ async def send_sms_provident(
 
     Args:
         to: Número de teléfono celular destino (ej. '5519231854').
-        text: Texto del mensaje a enviar por SMS (ej. con la contraseña temporal).
+        text: Texto del mensaje a enviar por SMS (ej. con la contraseña).
         api_key: (Opcional) API Key de ChatBridge si se desea sobreescribir la configurada en .env.
     """
     result = await send_sms_chatbridge_request(to=to, text=text, api_key=api_key)
