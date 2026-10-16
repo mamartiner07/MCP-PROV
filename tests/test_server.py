@@ -495,11 +495,12 @@ class TestProvidentMCP(unittest.TestCase):
         )
 
         self.assertTrue(result["success"])
-        self.assertEqual(result["request_number"], "REQ0431059")
+        self.assertEqual(result["ticket"], "TASK0487110")
         self.assertEqual(result["task_number"], "TASK0487110")
+        self.assertNotIn("request_number", result)
         self.assertEqual(result["state"], "Closed Complete")
         self.assertEqual(result["user_name"], "Dulce Amellaly Mejia Quintero")
-        self.assertIn("REQ0431059", result["message"])
+        self.assertIn("TASK0487110", result["message"])
 
     @patch("httpx.AsyncClient.put")
     def test_unlock_user_ad_request_mocked(self, mock_put):

@@ -943,10 +943,8 @@ async def document_servicenow_ticket_process(
         return {
             "success": False,
             "step": "get_task_from_req",
-            "request_number": request_number,
-            "request_sys_id": request_sys_id,
             "http_status": task_res.get("http_status", 500),
-            "error": f"Se creó el requerimiento {request_number}, pero no se pudo localizar su tarea técnica vinculada.",
+            "error": "No se pudo localizar el ticket vinculado en ServiceNow.",
             "details": task_res.get("data") or task_res.get("error"),
         }
 
@@ -960,10 +958,10 @@ async def document_servicenow_ticket_process(
         return {
             "success": False,
             "step": "get_task_details",
-            "request_number": request_number,
+            "ticket": task_number,
             "task_number": task_number,
             "http_status": task_detail_res.get("http_status", 500),
-            "error": f"No se pudo consultar el sys_id de la tarea técnica {task_number}.",
+            "error": f"No se pudo consultar el sys_id del ticket {task_number}.",
             "details": task_detail_res.get("data") or task_detail_res.get("error"),
         }
 
@@ -992,32 +990,29 @@ async def document_servicenow_ticket_process(
         return {
             "success": False,
             "step": "close_task",
-            "request_number": request_number,
-            "request_sys_id": request_sys_id,
+            "ticket": task_number,
             "task_number": task_number,
             "task_sys_id": task_sys_id,
             "http_status": close_res.get("http_status", 500),
-            "error": f"La solicitud {request_number} y tarea {task_number} fueron creadas pero no se pudieron cerrar.",
+            "error": f"El ticket {task_number} fue creado pero no se pudo cerrar.",
             "details": close_res.get("data") or close_res.get("error"),
         }
 
     logger.info(
-        f"Flujo ServiceNow concluido con éxito: REQ={request_number}, TASK={task_number} (Closed Complete)"
+        f"Flujo ServiceNow concluido con éxito: TICKET={task_number} (Closed Complete)"
     )
 
     return {
         "success": True,
         "http_status": 200,
-        "request_number": request_number,
-        "request_sys_id": request_sys_id,
+        "ticket": task_number,
         "task_number": task_number,
-        "task_sys_id": task_sys_id,
         "operation_type": "unlock" if is_unlock else "reset",
         "subcategory": target_subcategory,
         "state": close_res.get("state", "Closed Complete"),
         "user_name": resolved_name,
         "user_email": clean_email,
-        "message": f"Solicitud {request_number} y tarea {task_number} creadas, asignadas y cerradas exitosamente en ServiceNow ({target_subcategory}).",
+        "message": f"Ticket {task_number} creado, asignado y cerrado exitosamente en ServiceNow ({target_subcategory}).",
     }
 
 

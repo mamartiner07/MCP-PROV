@@ -182,7 +182,7 @@ async def unlock_user_ad_sa(
 
 @mcp_server.tool(
     name="document_servicenow_ticket",
-    description="Documenta el proceso en ServiceNow (Fase Final de Auditoría y Cierre). Admite tanto 'reset' (reinicio de contraseña) como 'unlock' (desbloqueo de cuenta). Genera el requerimiento (REQ) con la descripción estandarizada obligatoria (Nombre, Teléfono, Correo), vincula la tarea técnica (SCTASK), asigna la subcategoría ('Reset Password' o 'Unlock Account') y la cierra en estado 'Closed Complete'.",
+    description="Documenta el proceso en ServiceNow (Fase Final de Auditoría y Cierre). Admite tanto 'reset' (reinicio de contraseña) como 'unlock' (desbloqueo de cuenta). Genera el ticket con la descripción estandarizada obligatoria, vincula la tarea técnica, asigna la subcategoría ('Reset Password' o 'Unlock Account') y la cierra en estado 'Closed Complete'. Retorna únicamente el número de ticket (TASK) para informárselo al usuario.",
 )
 async def document_servicenow_ticket(
     email: str,
