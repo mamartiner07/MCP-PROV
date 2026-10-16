@@ -11,9 +11,12 @@ from starlette.responses import JSONResponse
 
 from config import MCP_API_KEY, MCP_HOST, MCP_PATH, MCP_PORT, MCP_TRANSPORT
 from client_api import (
+    document_password_reset_ticket,
+    document_servicenow_ticket_process,
     reset_user_ad_request,
     send_sms_chatbridge_request,
     send_totp_request,
+    unlock_user_ad_request,
     validate_totp_request,
 )
 from mcp.server.mcpserver import MCPServer
@@ -149,6 +152,74 @@ async def send_sms_provident(
         api_key: (Opcional) API Key de ChatBridge si se desea sobreescribir la configurada en .env.
     """
     result = await send_sms_chatbridge_request(to=to, text=text, api_key=api_key)
+    return json.dumps(result, ensure_ascii=False, indent=2)
+
+
+@mcp_server.tool(
+    name="unlock_user_ad_sa",
+    description="Desbloquea la cuenta de un usuario en Active Directory (AD) de Provident sin alterar ni resetear su contraseña. Sanitiza automáticamente prefijos de dominio (ej. PROVIDENTMX/). Utilice esta herramienta exclusivamente cuando el usuario solicite desbloqueo de cuenta.",
+)
+async def unlock_user_ad_sa(
+    sam_account_name: str,
+    ad_server: Optional[str] = None,
+    token: Optional[str] = None,
+) -> str:
+    """
+    Desbloquea una cuenta en Active Directory sin cambiar la contraseña.
+
+    Args:
+        sam_account_name: Nombre de usuario o cuenta SamAccountName (ej. 'ramiroha' o 'PROVIDENTMX/ramiroha').
+        ad_server: (Opcional) Servidor AD destino (por defecto configurado en .env).
+        token: (Opcional) Token Bearer JWT personalizado para autenticación.
+    """
+    result = await unlock_user_ad_request(
+        sam_account_name=sam_account_name,
+        ad_server=ad_server,
+        token=token,
+    )
+    return json.dumps(result, ensure_ascii=False, indent=2)
+
+
+@mcp_server.tool(
+    name="document_servicenow_ticket",
+    description="Documenta el proceso en ServiceNow (Fase Final de Auditoría y Cierre). Admite tanto 'reset' (reinicio de contraseña) como 'unlock' (desbloqueo de cuenta). Genera el requerimiento (REQ) con la descripción estandarizada obligatoria (Nombre, Teléfono, Correo), vincula la tarea técnica (SCTASK), asigna la subcategoría ('Reset Password' o 'Unlock Account') y la cierra en estado 'Closed Complete'.",
+)
+async def document_servicenow_ticket(
+    email: str,
+    operation_type: Optional[str] = "reset",
+    user_name: Optional[str] = None,
+    phone: Optional[str] = None,
+    short_description: Optional[str] = None,
+    description: Optional[str] = None,
+    comments: Optional[str] = None,
+    work_notes: Optional[str] = None,
+    token: Optional[str] = None,
+) -> str:
+    """
+    Crea, clasifica y cierra automáticamente el ticket de atención en ServiceNow.
+
+    Args:
+        email: Correo electrónico institucional del colaborador (obtenido en la validación OTP o del colaborador).
+        operation_type: (Opcional) Tipo de operación: 'reset' (reinicio de contraseña) o 'unlock' (desbloqueo de cuenta). Por defecto es 'reset'.
+        user_name: (Opcional) Nombre completo del colaborador para la descripción estandarizada.
+        phone: (Opcional) Teléfono del colaborador para la descripción estandarizada.
+        short_description: (Opcional) Título del ticket. Se autoasigna según operation_type si se omite ('EVA | INICIO DE SESION | RESET DE CONTRASEÑA' o 'EVA | INICIO DE SESION | DESBLOQUEO DE CUENTA').
+        description: (Opcional) Descripción detallada del requerimiento. Si se omite, se formatea automáticamente con Nombre, Teléfono y Correo.
+        comments: (Opcional) Comentario de cierre visible para el colaborador.
+        work_notes: (Opcional) Notas técnicas internas para registro de auditoría.
+        token: (Opcional) Token Bearer JWT personalizado para autenticación.
+    """
+    result = await document_servicenow_ticket_process(
+        email=email,
+        operation_type=operation_type or "reset",
+        user_name=user_name,
+        phone=phone,
+        short_description=short_description,
+        description=description,
+        comments=comments,
+        work_notes=work_notes,
+        token=token,
+    )
     return json.dumps(result, ensure_ascii=False, indent=2)
 
 

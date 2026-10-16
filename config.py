@@ -39,3 +39,23 @@ CHATBRIDGE_SMS_MASK = os.getenv(
     "CHATBRIDGE_SMS_MASK", "6aac0ecdb99ccfcfa56bbc2d"
 )
 
+# Configuración ServiceNow (Creación y Documentación de Tickets)
+SNOW_API_URL = os.getenv(
+    "PROVIDENT_SNOW_URL", "https://api.supporttsmx.com.mx:8443"
+)
+SNOW_DEFAULT_REQUESTOR = os.getenv(
+    "SNOW_DEFAULT_REQUESTOR", "0e966fba838ff6d063a134326daad374"
+)
+SNOW_BUSINESS_SERVICE = os.getenv(
+    "SNOW_BUSINESS_SERVICE", "0f873c450f5802003e6c85ece1050e4f"
+)
+SNOW_ASSIGNMENT_GROUP = os.getenv(
+    "SNOW_ASSIGNMENT_GROUP", "64bb9f64378fe200d8a8579543990eee"
+)
+SNOW_MANAGER_FALLBACK = os.getenv(
+    "SNOW_MANAGER_FALLBACK", "d8423b640fd402003e6c85ece1050e1e"
+)
+SNOW_PRIORITY = os.getenv("SNOW_PRIORITY", "4")
+SNOW_CATEGORY = os.getenv("SNOW_CATEGORY", "Active Directory")
+SNOW_SUBCATEGORY = os.getenv("SNOW_SUBCATEGORY", "Reset Password")
+

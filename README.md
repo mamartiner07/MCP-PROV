@@ -38,13 +38,48 @@ Restablece la contraseña de una cuenta en el Active Directory de Provident.
   * `token` *(string, opcional)*: Token Bearer JWT personalizado.
 * **Endpoint subyacente:** `PUT https://api.supporttsmx.com.mx:6443/Active Directory/SA/resetUserADSA`
 
-### 4. `send_sms_provident`
+### 4. `unlock_user_ad_sa`
+Desbloquea la cuenta de un usuario en Active Directory sin modificar su contraseña actual.
+* **Parámetros:**
+  * `sam_account_name` *(string, obligatorio)*: Cuenta de usuario a desbloquear (ej. `"ramiroha"` o `"PROVIDENTMX/ramiroha"`).
+  * `ad_server` *(string, opcional)*: Servidor de Active Directory (por defecto: `ADProviTest01.ProvidentMX.Test`).
+  * `token` *(string, opcional)*: Token Bearer JWT personalizado.
+* **Endpoint subyacente:** `PUT https://api.supporttsmx.com.mx:6443/Active Directory/SA/unlockUserADSA`
+
+### 5. `send_sms_provident`
 Envía un mensaje SMS a través del servicio ChatBridge al teléfono celular del empleado.
 * **Parámetros:**
   * `to` *(string, obligatorio)*: Número de teléfono celular destino (ejemplo: `"5519231854"`).
   * `text` *(string, obligatorio)*: Mensaje de texto a enviar.
   * `api_key` *(string, opcional)*: API Key de ChatBridge personalizada.
 * **Endpoint subyacente:** `POST https://connect.chatbridge.mx/v1/sms/messages`
+
+### 6. `document_servicenow_ticket`
+Orquesta el registro oficial, clasificación y cierre del ticket en ServiceNow tanto para **reinicio de contraseña** como para **desbloqueo de cuenta**:
+1. `getUser`: Localiza al usuario, manager directo, nombre y teléfono por email.
+2. Formatea la descripción obligatoria estandarizada:
+   ```text
+   Usuario se comunica via copilot para solicitar acceso a su cuenta.
+   Nombre: <Nombre>
+   Telefono: <Teléfono>
+   Correo: <correo>
+   ```
+3. `createGenericReq`: Genera la solicitud de catálogo (REQ) con el título correspondiente (`EVA | INICIO DE SESION | RESET DE CONTRASEÑA` o `EVA | INICIO DE SESION | DESBLOQUEO DE CUENTA`).
+4. `getTaskKeyListQuery`: Consulta y recupera la tarea técnica instanciada (`sc_task`).
+5. `getTask`: Obtiene el `sys_id` de la tarea técnica.
+6. `updateTask`: Asigna grupo resolutor, prioridad 4 y subcategoría (`Reset Password` o `Unlock Account`).
+7. `putTaskInClosedComplete`: Cierra la tarea con notas técnicas y comentarios al usuario.
+* **Parámetros:**
+  * `email` *(string, obligatorio)*: Correo institucional del colaborador.
+  * `operation_type` *(string, opcional)*: `"reset"` o `"unlock"` (por defecto `"reset"`).
+  * `user_name` *(string, opcional)*: Nombre completo del colaborador.
+  * `phone` *(string, opcional)*: Teléfono celular del colaborador.
+  * `short_description` *(string, opcional)*: Título personalizado (si se omite, se autoasigna según `operation_type`).
+  * `description` *(string, opcional)*: Detalle de la solicitud (si se omite, se formatea automáticamente con la plantilla estándar).
+  * `comments` *(string, opcional)*: Comentarios visibles al colaborador.
+  * `work_notes` *(string, opcional)*: Notas técnicas de auditoría interna.
+  * `token` *(string, opcional)*: Token Bearer JWT personalizado.
+* **Endpoints subyacentes:** `https://api.supporttsmx.com.mx:8443/PROVIDENT/SNOW/Test/...`
 
 ---
 
