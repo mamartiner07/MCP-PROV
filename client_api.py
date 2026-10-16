@@ -24,7 +24,6 @@ from config import (
     SNOW_DEFAULT_REQUESTOR,
     SNOW_MANAGER_FALLBACK,
     SNOW_PRIORITY,
-    SNOW_SUBCATEGORY,
     VERIFY_SSL,
 )
 
@@ -687,7 +686,7 @@ async def update_snow_task(
         "assignment_group": (assignment_group or SNOW_ASSIGNMENT_GROUP).strip(),
         "priority": str(priority or SNOW_PRIORITY).strip(),
         "u_category": (category or SNOW_CATEGORY).strip(),
-        "u_subcategory": (subcategory or SNOW_SUBCATEGORY).strip(),
+        "u_subcategory": (subcategory or "Reset Password").strip(),
     }
 
     try:

@@ -57,5 +57,4 @@ SNOW_MANAGER_FALLBACK = os.getenv(
 )
 SNOW_PRIORITY = os.getenv("SNOW_PRIORITY", "4")
 SNOW_CATEGORY = os.getenv("SNOW_CATEGORY", "Active Directory")
-SNOW_SUBCATEGORY = os.getenv("SNOW_SUBCATEGORY", "Reset Password")
 
