@@ -354,6 +354,7 @@ class TestProvidentMCP(unittest.TestCase):
             create_snow_generic_req(
                 user_sys_id="81cea343db872700d4b4adc3ca9619a2",
                 manager_sys_id="d762422f6fd402005f7790354b3ee467",
+                description="Primera linea\nSegunda linea",
             )
         )
         self.assertTrue(result["success"])
@@ -363,6 +364,7 @@ class TestProvidentMCP(unittest.TestCase):
         sent_payload = mock_post.call_args[1]["json"]
         self.assertEqual(sent_payload["vs_requested_for_user"], "81cea343db872700d4b4adc3ca9619a2")
         self.assertEqual(sent_payload["vs_requestor_manager"], "d762422f6fd402005f7790354b3ee467")
+        self.assertEqual(sent_payload["generic_description"], "Primera linea<salto>Segunda linea")
 
     @patch("httpx.AsyncClient.get")
     def test_get_snow_task_from_req(self, mock_get):
@@ -575,6 +577,7 @@ class TestProvidentMCP(unittest.TestCase):
         create_args = mock_create.call_args[1]
         self.assertEqual(create_args["short_description"], "EVA | INICIO DE SESION | DESBLOQUEO DE CUENTA")
         self.assertIn("Usuario se comunica via copilot para solicitar acceso a su cuenta.", create_args["description"])
+        self.assertIn("<salto>", create_args["description"])
         self.assertIn("Nombre: Dulce Amellaly Mejia Quintero", create_args["description"])
         self.assertIn("Telefono: 2227391030", create_args["description"])
         self.assertIn("Correo: dulce.mejia@provident.com.mx", create_args["description"])

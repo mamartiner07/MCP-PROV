@@ -57,12 +57,9 @@ Envía un mensaje SMS a través del servicio ChatBridge al teléfono celular del
 ### 6. `document_servicenow_ticket`
 Orquesta el registro oficial, clasificación y cierre del ticket en ServiceNow tanto para **reinicio de contraseña** como para **desbloqueo de cuenta**:
 1. `getUser`: Localiza al usuario, manager directo, nombre y teléfono por email.
-2. Formatea la descripción obligatoria estandarizada:
+2. Formatea la descripción obligatoria estandarizada (utilizando `<salto>` como delimitador de saltos de línea):
    ```text
-   Usuario se comunica via copilot para solicitar acceso a su cuenta.
-   Nombre: <Nombre>
-   Telefono: <Teléfono>
-   Correo: <correo>
+   Usuario se comunica via copilot para solicitar acceso a su cuenta.<salto>Nombre: <Nombre><salto>Telefono: <Teléfono><salto>Correo: <correo>
    ```
 3. `createGenericReq`: Genera la solicitud de catálogo (REQ) con el título correspondiente (`EVA | INICIO DE SESION | RESET DE CONTRASEÑA` o `EVA | INICIO DE SESION | DESBLOQUEO DE CUENTA`).
 4. `getTaskKeyListQuery`: Consulta y recupera la tarea técnica instanciada (`sc_task`).

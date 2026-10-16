@@ -504,10 +504,20 @@ async def create_snow_generic_req(
     """
     url = f"{SNOW_API_URL}/PROVIDENT/SNOW/Test/Request/createGenericReq"
     headers = _get_headers(token)
+    # La pasarela de Provident utiliza <salto> para representar los saltos de línea.
+    # Se reemplazan saltos de línea reales (\r\n, \n, \r) y '\\n' por <salto>.
+    raw_desc = str(description or "")
+    sanitized_desc = (
+        raw_desc.replace("\r\n", "<salto>")
+        .replace("\n", "<salto>")
+        .replace("\r", "<salto>")
+        .replace("\\n", "<salto>")
+    )
+
     payload = {
         "generic_short_description": short_description,
         "vs_requestor": (requestor_sys_id or SNOW_DEFAULT_REQUESTOR).strip(),
-        "generic_description": description,
+        "generic_description": sanitized_desc,
         "vs_requested_for": True,
         "u_business_service": (business_service or SNOW_BUSINESS_SERVICE).strip(),
         "vs_requested_for_user": str(user_sys_id).strip(),
@@ -730,14 +740,30 @@ async def close_snow_task(
     """
     url = f"{SNOW_API_URL}/PROVIDENT/SNOW/Test/Task/putTaskInClosedComplete"
     headers = _get_headers(token)
+    raw_comments = str(
+        comments or "Hola, tu solicitud ha sido atendida y completada con éxito"
+    ).strip()
+    raw_work_notes = str(
+        work_notes or "Ticket completado automáticamente por EVA"
+    ).strip()
+
+    sanitized_comments = (
+        raw_comments.replace("\r\n", "<salto>")
+        .replace("\n", "<salto>")
+        .replace("\r", "<salto>")
+        .replace("\\n", "<salto>")
+    )
+    sanitized_work_notes = (
+        raw_work_notes.replace("\r\n", "<salto>")
+        .replace("\n", "<salto>")
+        .replace("\r", "<salto>")
+        .replace("\\n", "<salto>")
+    )
+
     payload = {
         "sys_id": str(task_sys_id).strip(),
-        "comments": (
-            comments or "Hola, tu solicitud ha sido atendida y completada con éxito"
-        ).strip(),
-        "work_notes": (
-            work_notes or "Ticket completado automáticamente por EVA"
-        ).strip(),
+        "comments": sanitized_comments,
+        "work_notes": sanitized_work_notes,
     }
 
     try:
@@ -869,19 +895,25 @@ async def document_servicenow_ticket_process(
     resolved_phone = (phone or snow_phone or "").strip()
     resolved_email = clean_email
 
-    # Plantilla estandarizada de descripción requerida:
+    # Plantilla estandarizada de descripción requerida (con saltos de línea como <salto>):
     if not description or description.strip() in (
         "Usuario solicita reinicio de clave de red",
         "Usuario solicita desbloqueo de cuenta",
     ):
         target_description = (
-            "Usuario se comunica via copilot para solicitar acceso a su cuenta.\n"
-            f"Nombre: {resolved_name}\n"
-            f"Telefono: {resolved_phone}\n"
+            f"Usuario se comunica via copilot para solicitar acceso a su cuenta.<salto>"
+            f"Nombre: {resolved_name}<salto>"
+            f"Telefono: {resolved_phone}<salto>"
             f"Correo: {resolved_email}"
         )
     else:
-        target_description = description.strip()
+        target_description = (
+            description.strip()
+            .replace("\r\n", "<salto>")
+            .replace("\n", "<salto>")
+            .replace("\r", "<salto>")
+            .replace("\\n", "<salto>")
+        )
 
     # Paso 2: Crear Requerimiento
     req_res = await create_snow_generic_req(
